@@ -1,0 +1,23 @@
+{{- if .Values.orders.rabbitmq.create }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retail-store.fullname" . }}-orders-rabbitmq
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.rabbitmq.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.orders.rabbitmq.service.type | quote }}
+  ports:
+    - port: {{ .Values.orders.rabbitmq.service.amqp.port }}
+      targetPort: amqp
+      protocol: TCP
+      name: amqp
+    - port: {{ .Values.orders.rabbitmq.service.http.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "retail-store.rabbitmq.selectorLabels" . | nindent 4 }}
+{{- end }}
+

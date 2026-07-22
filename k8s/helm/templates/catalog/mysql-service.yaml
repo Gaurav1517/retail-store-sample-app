@@ -1,0 +1,18 @@
+{{- if .Values.catalog.mysql.create }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retail-store.fullname" . }}-catalog-mysql
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.mysql.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.catalog.mysql.service.type | quote }}
+  ports:
+    - port: {{ .Values.catalog.mysql.service.port }}
+      targetPort: mysql
+      protocol: TCP
+      name: mysql
+  selector:
+    {{- include "retail-store.mysql.selectorLabels" . | nindent 4 }}
+{{- end }}

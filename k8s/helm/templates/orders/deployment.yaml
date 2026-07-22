@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "retail-store.fullname" . }}-orders
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.orders.labels" . | nindent 4 }}
+spec:
+{{- if not .Values.orders.autoscaling.enabled }}
+  replicas: {{ .Values.orders.replicaCount }}
+{{- end }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "retail-store.orders.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or .Values.orders.podAnnotations .Values.orders.metrics.enabled }}
+      annotations:
+        {{- if .Values.orders.podAnnotations }}
+        {{- toYaml .Values.orders.podAnnotations | nindent 8 }}
+        {{- end }}
+        {{- if .Values.orders.metrics.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+        {{- end }}
+      {{- end }}
+      labels:
+        {{- include "retail-store.orders.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.orders.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ printf "%s-orders" (include "retail-store.fullname" .) | quote }}
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: orders
+          env:
+            - name: JAVA_OPTS
+              value: -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/urandom
+          envFrom:
+            {{- if eq "rabbitmq" .Values.orders.app.messaging.provider }}
+            - secretRef:
+                name: {{ include "retail-store.fullname" . }}-orders-rabbitmq
+            {{- end }}
+            {{- if eq "postgres" .Values.orders.app.persistence.provider }}
+            - secretRef:
+                name: {{ include "retail-store.fullname" . }}-orders-db
+            {{- end }}
+            - configMapRef:
+                name: {{ include "retail-store.fullname" . }}-orders
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          image: "{{ .Values.orders.image.repository }}:{{ .Values.orders.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.orders.image.pullPolicy | quote }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.orders.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp-volume
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+      {{- with .Values.orders.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.orders.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.orders.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

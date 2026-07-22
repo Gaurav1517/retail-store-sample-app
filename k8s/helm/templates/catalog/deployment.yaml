@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "retail-store.fullname" . }}-catalog
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.catalog.labels" . | nindent 4 }}
+spec:
+{{- if not .Values.catalog.autoscaling.enabled }}
+  replicas: {{ .Values.catalog.replicaCount }}
+{{- end }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "retail-store.catalog.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or .Values.catalog.podAnnotations .Values.catalog.metrics.enabled }}
+      annotations:
+        {{- if .Values.catalog.podAnnotations }}
+        {{- toYaml .Values.catalog.podAnnotations | nindent 8 }}
+        {{- end }}
+        {{- if .Values.catalog.metrics.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+        {{- end }}
+      {{- end }}
+      labels:
+        {{- include "retail-store.catalog.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.catalog.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ printf "%s-catalog" (include "retail-store.fullname" .) | quote }}
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: catalog
+          envFrom:
+            - configMapRef:
+                name: {{ include "retail-store.fullname" . }}-catalog
+            {{- if eq "mysql" .Values.catalog.app.persistence.provider }}
+            - secretRef:
+                name: {{ include "retail-store.fullname" . }}-catalog-db
+            {{- end }}
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          image: "{{ .Values.catalog.image.repository }}:{{ .Values.catalog.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.catalog.image.pullPolicy | quote }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.catalog.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp-volume
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+      {{- with .Values.catalog.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.catalog.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.catalog.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

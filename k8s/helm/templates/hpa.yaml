@@ -1,0 +1,180 @@
+---
+# UI HPA
+{{- if .Values.ui.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "retail-store.fullname" . }}-ui
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.ui.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "retail-store.fullname" . }}-ui
+  minReplicas: {{ .Values.ui.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.ui.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.ui.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.ui.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.ui.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.ui.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+
+---
+# Catalog HPA
+{{- if .Values.catalog.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "retail-store.fullname" . }}-catalog
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.catalog.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "retail-store.fullname" . }}-catalog
+  minReplicas: {{ .Values.catalog.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.catalog.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.catalog.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.catalog.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.catalog.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.catalog.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+
+---
+# Cart HPA
+{{- if .Values.cart.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "retail-store.fullname" . }}-cart
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.cart.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "retail-store.fullname" . }}-cart
+  minReplicas: {{ .Values.cart.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.cart.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.cart.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.cart.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.cart.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.cart.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+
+---
+# Checkout HPA
+{{- if .Values.checkout.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "retail-store.fullname" . }}-checkout
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.checkout.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "retail-store.fullname" . }}-checkout
+  minReplicas: {{ .Values.checkout.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.checkout.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.checkout.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.checkout.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.checkout.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.checkout.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+
+---
+# Orders HPA
+{{- if .Values.orders.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "retail-store.fullname" . }}-orders
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.orders.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "retail-store.fullname" . }}-orders
+  minReplicas: {{ .Values.orders.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.orders.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.orders.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.orders.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.orders.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.orders.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+

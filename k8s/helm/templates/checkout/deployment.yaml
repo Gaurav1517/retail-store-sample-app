@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "retail-store.fullname" . }}-checkout
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.checkout.labels" . | nindent 4 }}
+spec:
+{{- if not .Values.checkout.autoscaling.enabled }}
+  replicas: {{ .Values.checkout.replicaCount }}
+{{- end }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "retail-store.checkout.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or .Values.checkout.podAnnotations .Values.checkout.metrics.enabled }}
+      annotations:
+        {{- if .Values.checkout.podAnnotations }}
+        {{- toYaml .Values.checkout.podAnnotations | nindent 8 }}
+        {{- end }}
+        {{- if .Values.checkout.metrics.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+        {{- end }}
+      {{- end }}
+      labels:
+        {{- include "retail-store.checkout.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.checkout.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ printf "%s-checkout" (include "retail-store.fullname" .) | quote }}
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: checkout
+          envFrom:
+            - configMapRef:
+                name: {{ include "retail-store.fullname" . }}-checkout
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+          image: "{{ .Values.checkout.image.repository }}:{{ .Values.checkout.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.checkout.image.pullPolicy | quote }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.checkout.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp-volume
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+      {{- with .Values.checkout.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.checkout.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.checkout.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

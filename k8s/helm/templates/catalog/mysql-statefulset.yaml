@@ -1,0 +1,67 @@
+{{- if .Values.catalog.mysql.create }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "retail-store.fullname" . }}-catalog-mysql
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.mysql.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ include "retail-store.fullname" . }}-catalog-mysql
+  selector:
+    matchLabels:
+      {{- include "retail-store.mysql.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "retail-store.mysql.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if not .Values.catalog.mysql.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+      containers:
+        - name: mysql
+          image: "{{ .Values.catalog.mysql.image.repository }}:{{ .Values.catalog.mysql.image.tag }}"
+          imagePullPolicy: {{ .Values.catalog.mysql.image.pullPolicy | quote }}
+          env:
+            - name: MYSQL_RANDOM_ROOT_PASSWORD
+              value: "yes"
+            - name: MYSQL_DATABASE
+              value: {{ .Values.catalog.app.persistence.database | quote }}
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "retail-store.fullname" . }}-catalog-db
+                  key: RETAIL_CATALOG_PERSISTENCE_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "retail-store.fullname" . }}-catalog-db
+                  key: RETAIL_CATALOG_PERSISTENCE_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+          ports:
+            - name: mysql
+              containerPort: 3306
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.catalog.mysql.resources | nindent 12 }}
+  {{- if .Values.catalog.mysql.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          {{- toYaml .Values.catalog.mysql.persistence.accessModes | nindent 10 }}
+        resources:
+          requests:
+            storage: "{{ .Values.catalog.mysql.persistence.size }}"
+        {{- if .Values.catalog.mysql.persistence.storageClass }}
+        storageClassName: "{{ .Values.catalog.mysql.persistence.storageClass }}"
+        {{- end }}
+  {{- end }}
+{{- end }}

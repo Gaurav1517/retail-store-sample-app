@@ -1,0 +1,18 @@
+{{- if .Values.cart.dynamodb.create }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retail-store.fullname" . }}-cart-dynamodb
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.dynamodb.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.cart.dynamodb.service.type | quote }}
+  ports:
+    - port: {{ .Values.cart.dynamodb.service.port }}
+      targetPort: dynamodb
+      protocol: TCP
+      name: dynamodb
+  selector:
+    {{- include "retail-store.dynamodb.selectorLabels" . | nindent 4 }}
+{{- end }}

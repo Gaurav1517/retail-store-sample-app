@@ -1,0 +1,66 @@
+{{- if .Values.orders.rabbitmq.create }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "retail-store.fullname" . }}-orders-rabbitmq
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.rabbitmq.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ include "retail-store.fullname" . }}-orders-rabbitmq
+  selector:
+    matchLabels:
+      {{- include "retail-store.rabbitmq.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "retail-store.rabbitmq.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if not .Values.orders.rabbitmq.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+      containers:
+        - name: rabbitmq
+          image: "{{ .Values.orders.rabbitmq.image.repository }}:{{ .Values.orders.rabbitmq.image.tag }}"
+          imagePullPolicy: {{ .Values.orders.rabbitmq.image.pullPolicy | quote }}
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "retail-store.fullname" . }}-orders-rabbitmq
+                  key: SPRING_RABBITMQ_USERNAME
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "retail-store.fullname" . }}-orders-rabbitmq
+                  key: SPRING_RABBITMQ_PASSWORD
+          ports:
+            - name: amqp
+              containerPort: 5672
+              protocol: TCP
+            - name: http
+              containerPort: 15672
+              protocol: TCP
+          volumeMounts:
+            - name: data
+              mountPath: "/var/lib/rabbitmq/mnesia"
+          resources:
+            {{- toYaml .Values.orders.rabbitmq.resources | nindent 12 }}
+  {{- if .Values.orders.rabbitmq.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          {{- toYaml .Values.orders.rabbitmq.persistence.accessModes | nindent 10 }}
+        resources:
+          requests:
+            storage: "{{ .Values.orders.rabbitmq.persistence.size }}"
+        {{- if .Values.orders.rabbitmq.persistence.storageClass }}
+        storageClassName: "{{ .Values.orders.rabbitmq.persistence.storageClass }}"
+        {{- end }}
+  {{- end }}
+{{- end }}

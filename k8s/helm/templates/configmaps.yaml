@@ -1,0 +1,101 @@
+---
+# UI ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retail-store.fullname" . }}-ui
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.ui.labels" . | nindent 4 }}
+data:
+  RETAIL_UI_ENDPOINTS_CATALOG: {{ .Values.ui.app.endpoints.catalog | default (printf "http://%s-catalog:%d" (include "retail-store.fullname" .) (.Values.catalog.service.port | int)) | quote }}
+  RETAIL_UI_ENDPOINTS_CARTS: {{ .Values.ui.app.endpoints.carts | default (printf "http://%s-cart:%d" (include "retail-store.fullname" .) (.Values.cart.service.port | int)) | quote }}
+  RETAIL_UI_ENDPOINTS_CHECKOUT: {{ .Values.ui.app.endpoints.checkout | default (printf "http://%s-checkout:%d" (include "retail-store.fullname" .) (.Values.checkout.service.port | int)) | quote }}
+  RETAIL_UI_ENDPOINTS_ORDERS: {{ .Values.ui.app.endpoints.orders | default (printf "http://%s-orders:%d" (include "retail-store.fullname" .) (.Values.orders.service.port | int)) | quote }}
+  {{- if .Values.ui.app.theme }}
+  RETAIL_UI_THEME: {{ .Values.ui.app.theme | quote }}
+  {{- end }}
+  {{- if .Values.ui.app.chat.enabled }}
+  RETAIL_UI_CHAT_ENABLED: {{ .Values.ui.app.chat.enabled | quote }}
+  RETAIL_UI_CHAT_PROVIDER: {{ .Values.ui.app.chat.provider | quote }}
+  RETAIL_UI_CHAT_MODEL: {{ .Values.ui.app.chat.model | quote }}
+  {{- if .Values.ui.app.chat.temperature }}
+  RETAIL_UI_CHAT_TEMPERATURE: {{ .Values.ui.app.chat.temperature | quote }}
+  {{- end }}
+  {{- if .Values.ui.app.chat.maxTokens }}
+  RETAIL_UI_CHAT_MAX_TOKENS: {{ .Values.ui.app.chat.maxTokens | quote }}
+  {{- end }}
+  {{- end }}
+---
+# Catalog ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retail-store.fullname" . }}-catalog
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.catalog.labels" . | nindent 4 }}
+data:
+  RETAIL_CATALOG_PERSISTENCE_PROVIDER: {{ .Values.catalog.app.persistence.provider | quote }}
+  {{- if eq "mysql" .Values.catalog.app.persistence.provider }}
+  RETAIL_CATALOG_PERSISTENCE_ENDPOINT: {{ printf "%s-catalog-mysql:%d" (include "retail-store.fullname" .) (.Values.catalog.mysql.service.port | int) | quote }}
+  RETAIL_CATALOG_PERSISTENCE_DB_NAME: {{ .Values.catalog.app.persistence.database | quote }}
+  {{- end }}
+---
+# Cart ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retail-store.fullname" . }}-cart
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.cart.labels" . | nindent 4 }}
+data:
+  RETAIL_CART_PERSISTENCE_PROVIDER: {{ .Values.cart.app.persistence.provider | quote }}
+  {{- if eq "dynamodb" .Values.cart.app.persistence.provider }}
+  RETAIL_CART_PERSISTENCE_DYNAMODB_TABLE_NAME: {{ .Values.cart.app.persistence.dynamodb.tableName | quote }}
+  {{- if .Values.cart.dynamodb.create }}
+  RETAIL_CART_PERSISTENCE_DYNAMODB_CREATE_TABLE: "true"
+  AWS_ACCESS_KEY_ID: "key"
+  AWS_SECRET_ACCESS_KEY: "dummy"
+  RETAIL_CART_PERSISTENCE_DYNAMODB_ENDPOINT: {{ printf "http://%s-cart-dynamodb:%d" (include "retail-store.fullname" .) (.Values.cart.dynamodb.service.port | int) | quote }}
+  {{- end }}
+  {{- end }}
+---
+# Checkout ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retail-store.fullname" . }}-checkout
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.checkout.labels" . | nindent 4 }}
+data:
+  RETAIL_CHECKOUT_PERSISTENCE_PROVIDER: {{ .Values.checkout.app.persistence.provider | quote }}
+  {{- if eq "redis" .Values.checkout.app.persistence.provider }}
+  {{- if .Values.checkout.redis.create }}
+  RETAIL_CHECKOUT_PERSISTENCE_REDIS_URL: {{ printf "redis://%s-checkout-redis:%d" (include "retail-store.fullname" .) (.Values.checkout.redis.service.port | int) | quote }}
+  {{- else }}
+  RETAIL_CHECKOUT_PERSISTENCE_REDIS_URL: {{ .Values.checkout.app.persistence.redis.endpoint | quote }}
+  {{- end }}
+  {{- end }}
+  RETAIL_CHECKOUT_ENDPOINTS_ORDERS: {{ .Values.checkout.app.endpoints.orders | default (printf "http://%s-orders:%d" (include "retail-store.fullname" .) (.Values.orders.service.port | int)) | quote }}
+---
+# Orders ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "retail-store.fullname" . }}-orders
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.orders.labels" . | nindent 4 }}
+data:
+  RETAIL_ORDERS_MESSAGING_PROVIDER: {{ .Values.orders.app.messaging.provider | quote }}
+  {{- if eq "rabbitmq" .Values.orders.app.messaging.provider }}
+  RETAIL_ORDERS_MESSAGING_RABBITMQ_ADDRESSES: {{ printf "%s-orders-rabbitmq:%d" (include "retail-store.fullname" .) (.Values.orders.rabbitmq.service.amqp.port | int) | quote }}
+  {{- end }}
+  RETAIL_ORDERS_PERSISTENCE_PROVIDER: {{ .Values.orders.app.persistence.provider | quote }}
+  {{- if eq "postgres" .Values.orders.app.persistence.provider }}
+  RETAIL_ORDERS_PERSISTENCE_ENDPOINT: {{ printf "%s-orders-postgresql:%d" (include "retail-store.fullname" .) (.Values.orders.postgresql.service.port | int) | quote }}
+  RETAIL_ORDERS_PERSISTENCE_NAME: {{ .Values.orders.app.persistence.database | quote }}
+  {{- end }}

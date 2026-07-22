@@ -1,0 +1,405 @@
+# Base values for retail-store-k8s
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Namespace configuration
+# NOTE: keep `create: false` when deploying with `helm --create-namespace`
+# (the deploy.sh / deploy.ps1 scripts do this). Setting it to true makes the
+# chart render its own Namespace object, which conflicts with a namespace
+# that already exists or was created by Helm itself.
+namespace:
+  create: false
+  name: retail-store
+  quotas:
+    requests:
+      cpu: "8"
+      memory: "16Gi"
+    limits:
+      cpu: "16"
+      memory: "32Gi"
+    persistentvolumeclaims: 5
+    pods: 50
+    services: 15
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+  tls: []
+  hosts: []
+
+# Cert Manager configuration
+certManager:
+  createClusterIssuer: false
+  email: ""
+  clusterIssuerName: "letsencrypt-prod"
+  server: "https://acme-v02.api.letsencrypt.org/directory"
+  privateKeySecretName: "letsencrypt-prod-key"
+
+# ============================================
+# UI Service
+# ============================================
+ui:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/aws-containers/retail-store-sample-ui
+    pullPolicy: Always
+    tag: "1.2.2"
+  imagePullSecrets: []
+  serviceAccount:
+    create: true
+    annotations: {}
+    name: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 128m
+      memory: 512Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 50
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  metrics:
+    enabled: true
+  app:
+    theme: ""
+    # Leave endpoints empty to default to the in-cluster service DNS names
+    # (http://<release-fullname>-<service>:<port>), which is correct for a
+    # standard install. Only override for external/split deployments.
+    endpoints:
+      catalog: ""
+      carts: ""
+      checkout: ""
+      orders: ""
+    chat:
+      enabled: false
+      provider: ""
+      model: ""
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+# ============================================
+# Catalog Service
+# ============================================
+catalog:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/aws-containers/retail-store-sample-catalog
+    pullPolicy: Always
+    tag: "1.2.2"
+  imagePullSecrets: []
+  serviceAccount:
+    create: true
+    annotations: {}
+    name: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 256m
+      memory: 256Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  metrics:
+    enabled: true
+  app:
+    persistence:
+      provider: in-memory
+      endpoint: ""
+      database: "catalog"
+      secret:
+        username: catalog_user
+        password: ""
+  mysql:
+    create: false
+    image:
+      repository: public.ecr.aws/docker/library/mysql
+      pullPolicy: IfNotPresent
+      tag: "8.0"
+    service:
+      type: ClusterIP
+      port: 3306
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+    persistence:
+      enabled: false
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      storageClass: ""
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+# ============================================
+# Cart Service
+# ============================================
+cart:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/aws-containers/retail-store-sample-cart
+    pullPolicy: Always
+    tag: "1.2.2"
+  imagePullSecrets: []
+  serviceAccount:
+    create: true
+    annotations: {}
+    name: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 256m
+      memory: 512Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  metrics:
+    enabled: true
+  app:
+    persistence:
+      provider: in-memory
+      dynamodb:
+        tableName: Items
+        createTable: false
+  dynamodb:
+    create: false
+    image:
+      repository: public.ecr.aws/aws-dynamodb-local/aws-dynamodb-local
+      pullPolicy: IfNotPresent
+      tag: "1.25.1"
+    service:
+      type: ClusterIP
+      port: 8000
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    nodeSelector: {}
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+# ============================================
+# Checkout Service
+# ============================================
+checkout:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/aws-containers/retail-store-sample-checkout
+    pullPolicy: Always
+    tag: "1.2.2"
+  imagePullSecrets: []
+  serviceAccount:
+    create: true
+    annotations: {}
+    name: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 128m
+      memory: 256Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  metrics:
+    enabled: true
+  app:
+    persistence:
+      provider: in-memory
+      redis:
+        endpoint: ""
+    # Leave empty to default to the in-cluster orders service DNS name.
+    endpoints:
+      orders: ""
+  redis:
+    create: false
+    image:
+      repository: public.ecr.aws/docker/library/redis
+      pullPolicy: IfNotPresent
+      tag: "6.0-alpine"
+    service:
+      type: ClusterIP
+      port: 6379
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    nodeSelector: {}
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+
+# ============================================
+# Orders Service
+# ============================================
+orders:
+  replicaCount: 1
+  image:
+    repository: public.ecr.aws/aws-containers/retail-store-sample-orders
+    pullPolicy: Always
+    tag: "1.2.2"
+  imagePullSecrets: []
+  serviceAccount:
+    create: true
+    annotations: {}
+    name: ""
+  podAnnotations: {}
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 256m
+      memory: 512Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  metrics:
+    enabled: true
+  app:
+    persistence:
+      provider: in-memory
+      endpoint: ""
+      database: "orders"
+      secret:
+        username: orders_user
+        password: ""
+    messaging:
+      provider: in-memory
+      rabbitmq:
+        secret:
+          username: rabbitmq
+          password: ""
+  postgresql:
+    create: false
+    image:
+      repository: public.ecr.aws/docker/library/postgres
+      pullPolicy: IfNotPresent
+      tag: "13"
+    service:
+      type: ClusterIP
+      port: 5432
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+    persistence:
+      enabled: false
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      storageClass: ""
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  rabbitmq:
+    create: false
+    image:
+      repository: public.ecr.aws/docker/library/rabbitmq
+      pullPolicy: IfNotPresent
+      tag: "3.8-management"
+    service:
+      type: ClusterIP
+      amqp:
+        port: 5672
+      http:
+        port: 15672
+    resources:
+      limits:
+        cpu: 250m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    persistence:
+      enabled: false
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      storageClass: ""
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1

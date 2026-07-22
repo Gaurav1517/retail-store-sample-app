@@ -1,0 +1,33 @@
+{{- if .Values.checkout.redis.create }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "retail-store.fullname" . }}-checkout-redis
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.redis.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "retail-store.redis.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "retail-store.redis.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.checkout.redis.image.repository }}:{{ .Values.checkout.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.checkout.redis.image.pullPolicy | quote }}
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.checkout.redis.resources | nindent 12 }}
+      {{- with .Values.checkout.redis.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

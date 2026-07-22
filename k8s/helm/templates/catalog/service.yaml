@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retail-store.fullname" . }}-catalog
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.catalog.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.catalog.service.type | quote }}
+  ports:
+    - port: {{ .Values.catalog.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "retail-store.catalog.selectorLabels" . | nindent 4 }}

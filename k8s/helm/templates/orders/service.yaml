@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "retail-store.fullname" . }}-orders
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.orders.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.orders.service.type | quote }}
+  ports:
+    - port: {{ .Values.orders.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "retail-store.orders.selectorLabels" . | nindent 4 }}

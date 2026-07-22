@@ -1,0 +1,28 @@
+{{- if .Values.namespace.create }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.labels" . | nindent 4 }}
+    name: {{ include "retail-store.namespace" . }}
+{{- end }}
+{{- if .Values.namespace.quotas }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ include "retail-store.namespace" . }}-quota
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.labels" . | nindent 4 }}
+spec:
+  hard:
+    requests.cpu: {{ .Values.namespace.quotas.requests.cpu }}
+    requests.memory: {{ .Values.namespace.quotas.requests.memory }}
+    limits.cpu: {{ .Values.namespace.quotas.limits.cpu }}
+    limits.memory: {{ .Values.namespace.quotas.limits.memory }}
+    persistentvolumeclaims: {{ .Values.namespace.quotas.persistentvolumeclaims }}
+    pods: {{ .Values.namespace.quotas.pods }}
+    services: {{ .Values.namespace.quotas.services }}
+{{- end }}

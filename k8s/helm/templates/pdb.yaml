@@ -1,0 +1,105 @@
+---
+# UI PDB
+{{- if .Values.ui.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "retail-store.fullname" . }}-ui
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.ui.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.ui.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.ui.podDisruptionBudget.minAvailable }}
+  {{- else if .Values.ui.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.ui.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "retail-store.ui.selectorLabels" . | nindent 6 }}
+{{- end }}
+
+---
+# Catalog PDB
+{{- if .Values.catalog.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "retail-store.fullname" . }}-catalog
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.catalog.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.catalog.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.catalog.podDisruptionBudget.minAvailable }}
+  {{- else if .Values.catalog.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.catalog.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "retail-store.catalog.selectorLabels" . | nindent 6 }}
+{{- end }}
+
+---
+# Cart PDB
+{{- if .Values.cart.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "retail-store.fullname" . }}-cart
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.cart.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.cart.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.cart.podDisruptionBudget.minAvailable }}
+  {{- else if .Values.cart.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.cart.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "retail-store.cart.selectorLabels" . | nindent 6 }}
+{{- end }}
+
+---
+# Checkout PDB
+{{- if .Values.checkout.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "retail-store.fullname" . }}-checkout
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.checkout.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.checkout.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.checkout.podDisruptionBudget.minAvailable }}
+  {{- else if .Values.checkout.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.checkout.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "retail-store.checkout.selectorLabels" . | nindent 6 }}
+{{- end }}
+
+---
+# Orders PDB
+{{- if .Values.orders.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "retail-store.fullname" . }}-orders
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.orders.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.orders.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.orders.podDisruptionBudget.minAvailable }}
+  {{- else if .Values.orders.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.orders.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "retail-store.orders.selectorLabels" . | nindent 6 }}
+{{- end }}
+

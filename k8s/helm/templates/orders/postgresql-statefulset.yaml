@@ -1,0 +1,67 @@
+{{- if .Values.orders.postgresql.create }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "retail-store.fullname" . }}-orders-postgresql
+  namespace: {{ include "retail-store.namespace" . }}
+  labels:
+    {{- include "retail-store.postgresql.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ include "retail-store.fullname" . }}-orders-postgresql
+  selector:
+    matchLabels:
+      {{- include "retail-store.postgresql.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "retail-store.postgresql.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if not .Values.orders.postgresql.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+      containers:
+        - name: postgresql
+          image: "{{ .Values.orders.postgresql.image.repository }}:{{ .Values.orders.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.orders.postgresql.image.pullPolicy | quote }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.orders.app.persistence.database | quote }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "retail-store.fullname" . }}-orders-db
+                  key: RETAIL_ORDERS_PERSISTENCE_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "retail-store.fullname" . }}-orders-db
+                  key: RETAIL_ORDERS_PERSISTENCE_PASSWORD
+            - name: PGDATA
+              value: /data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.orders.postgresql.resources | nindent 12 }}
+  {{- if .Values.orders.postgresql.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          {{- toYaml .Values.orders.postgresql.persistence.accessModes | nindent 10 }}
+        resources:
+          requests:
+            storage: "{{ .Values.orders.postgresql.persistence.size }}"
+        {{- if .Values.orders.postgresql.persistence.storageClass }}
+        storageClassName: "{{ .Values.orders.postgresql.persistence.storageClass }}"
+        {{- end }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,15 @@
+apiVersion: v2
+name: retail-store-k8s
+description: A production-grade Helm chart for deploying the retail store sample application on Kubernetes
+type: application
+version: 1.0.0
+appVersion: 1.2.2
+keywords:
+  - retail-store
+  - e-commerce
+  - microservices
+  - production
+home: https://github.com/aws-containers/retail-store-sample-app
+sources:
+  - https://github.com/aws-containers/retail-store-sample-app
+maintainers: []

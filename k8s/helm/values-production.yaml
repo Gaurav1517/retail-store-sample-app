@@ -1,0 +1,320 @@
+# Production values for retail-store-k8s
+# Override base values for production deployment
+# Usage: helm install retail-store ./k8s/helm -f k8s/helm/values-production.yaml
+
+# Namespace configuration
+# The namespace itself is created by `helm --create-namespace` (see deploy.sh),
+# so the chart must not render its own Namespace object.
+namespace:
+  create: false
+  name: retail-store
+  quotas:
+    requests:
+      cpu: "8"
+      memory: "16Gi"
+    limits:
+      cpu: "16"
+      memory: "32Gi"
+    persistentvolumeclaims: 5
+    pods: 50
+    services: 15
+
+# Ingress configuration - NGINX Ingress as Load Balancer
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    # Cert-manager for automatic TLS
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - retail-store.yourdomain.com   # <-- REPLACE WITH YOUR DOMAIN
+  tls:
+    - hosts:
+        - retail-store.yourdomain.com   # <-- REPLACE WITH YOUR DOMAIN
+      secretName: retail-store-tls
+
+# Cert Manager - enables automatic SSL/TLS certificates
+certManager:
+  createClusterIssuer: true
+  email: your-email@example.com     # <-- REPLACE WITH YOUR EMAIL
+  clusterIssuerName: "letsencrypt-prod"
+  server: "https://acme-v02.api.letsencrypt.org/directory"
+  privateKeySecretName: "letsencrypt-prod-key"
+
+# ============================================
+# UI Service - Production config
+# ============================================
+ui:
+  replicaCount: 2
+  image:
+    repository: public.ecr.aws/aws-containers/retail-store-sample-ui
+    pullPolicy: IfNotPresent
+    tag: "1.2.2"
+  serviceAccount:
+    create: true
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 256m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 60
+  metrics:
+    enabled: true
+  # Backend endpoints default to the in-cluster service DNS names
+  # (http://<release-fullname>-<service>:<port>) - no override needed.
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# ============================================
+# Catalog Service - Production config
+# ============================================
+catalog:
+  replicaCount: 2
+  image:
+    repository: public.ecr.aws/aws-containers/retail-store-sample-catalog
+    pullPolicy: IfNotPresent
+    tag: "1.2.2"
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 256m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 75
+  app:
+    persistence:
+      provider: mysql
+      database: "catalogdb"
+      secret:
+        username: catalog_user
+        password: ""    # Auto-generated if empty (stable across upgrades)
+  mysql:
+    create: true
+    image:
+      repository: public.ecr.aws/docker/library/mysql
+      tag: "8.0"
+    service:
+      type: ClusterIP
+      port: 3306
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+    persistence:
+      enabled: true
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      storageClass: gp2   # <-- ADJUST FOR YOUR CLUSTER (e.g., "standard" for minikube)
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# ============================================
+# Cart Service - Production config
+# ============================================
+cart:
+  replicaCount: 2
+  image:
+    repository: public.ecr.aws/aws-containers/retail-store-sample-cart
+    pullPolicy: IfNotPresent
+    tag: "1.2.2"
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 256m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 75
+  app:
+    persistence:
+      provider: dynamodb
+      dynamodb:
+        tableName: Items
+        createTable: true
+  dynamodb:
+    create: true
+    image:
+      repository: public.ecr.aws/aws-dynamodb-local/aws-dynamodb-local
+      tag: "1.25.1"
+    service:
+      type: ClusterIP
+      port: 8000
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# ============================================
+# Checkout Service - Production config
+# ============================================
+checkout:
+  replicaCount: 2
+  image:
+    repository: public.ecr.aws/aws-containers/retail-store-sample-checkout
+    pullPolicy: IfNotPresent
+    tag: "1.2.2"
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 256m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 75
+  app:
+    persistence:
+      provider: redis
+    # endpoints.orders defaults to the in-cluster orders service DNS name.
+  redis:
+    create: true
+    image:
+      repository: public.ecr.aws/docker/library/redis
+      tag: "6.0-alpine"
+    service:
+      type: ClusterIP
+      port: 6379
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# ============================================
+# Orders Service - Production config
+# ============================================
+orders:
+  replicaCount: 2
+  image:
+    repository: public.ecr.aws/aws-containers/retail-store-sample-orders
+    pullPolicy: IfNotPresent
+    tag: "1.2.2"
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 256m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 75
+  app:
+    persistence:
+      provider: postgres
+      database: "orders"
+      secret:
+        username: orders_user
+        password: ""    # Auto-generated if empty (stable across upgrades)
+    messaging:
+      provider: rabbitmq
+      rabbitmq:
+        secret:
+          username: rabbitmq
+          password: ""  # Auto-generated if empty (stable across upgrades)
+  postgresql:
+    create: true
+    image:
+      repository: public.ecr.aws/docker/library/postgres
+      tag: "13"
+    service:
+      type: ClusterIP
+      port: 5432
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+    persistence:
+      enabled: true
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      storageClass: gp2   # <-- ADJUST FOR YOUR CLUSTER (e.g., "standard" for minikube)
+  rabbitmq:
+    create: true
+    image:
+      repository: public.ecr.aws/docker/library/rabbitmq
+      tag: "3.8-management"
+    service:
+      type: ClusterIP
+      amqp:
+        port: 5672
+      http:
+        port: 15672
+    resources:
+      limits:
+        cpu: 250m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    persistence:
+      enabled: true
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      storageClass: gp2   # <-- ADJUST FOR YOUR CLUSTER (e.g., "standard" for minikube)
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
