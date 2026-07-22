@@ -34,7 +34,17 @@ echo ""
 NAMESPACE="retail-store"
 RELEASE_NAME="retail-store"
 CHART_DIR="./helm"
+
+# ⚠️ Choose your values file:
+#   - values-production.yaml  → For cloud clusters (EKS/AKS/GKE) with Load Balancer + TLS
+#   - values-testing.yaml     → For single-node clusters (kubeadm/minikube/kind/k3s) with reduced resources
 VALUES_FILE="./helm/values-production.yaml"
+
+# You can override via environment variable:
+#   VALUES_FILE=./helm/values-testing.yaml ./deploy.sh
+if [ -n "${VALUES_FILE_OVERRIDE}" ]; then
+    VALUES_FILE="${VALUES_FILE_OVERRIDE}"
+fi
 
 # Check prerequisites
 echo -e "${YELLOW}[1/6] Checking prerequisites...${NC}"

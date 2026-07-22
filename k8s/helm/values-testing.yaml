@@ -1,62 +1,57 @@
-# Production values for retail-store-k8s
-# Override base values for production deployment
-# Usage: helm install retail-store ./k8s/helm -f k8s/helm/values-production.yaml
+# Testing values for retail-store-k8s
+# Optimized for single-node kubeadm/minikube/kind clusters
+# Usage: helm install retail-store ./k8s/helm -f k8s/helm/values-testing.yaml
+#
+# 💡 For testing on a single node (e.g., kubeadm on EC2, minikube, kind),
+#    this file reduces replica counts and resource requests significantly.
 
 # Namespace configuration
-# The namespace itself is created by `helm --create-namespace` (see deploy.sh),
-# so the chart must not render its own Namespace object.
 namespace:
   create: false
   name: retail-store
   quotas:
     requests:
+      cpu: "4"
+      memory: "8Gi"
+    limits:
       cpu: "8"
       memory: "16Gi"
-    limits:
-      cpu: "16"
-      memory: "32Gi"
     persistentvolumeclaims: 5
-    pods: 50
+    pods: 30
     services: 15
 
-# Ingress configuration - NGINX Ingress as Load Balancer
+# Ingress configuration
+# ⚠️ On kubeadm/minikube/kind clusters, LoadBalancer type won't get an external IP.
+#    Use NodePort instead, or install MetalLB for on-prem LoadBalancer support.
 ingress:
   enabled: true
   className: "nginx"
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # For testing, skip SSL redirect to simplify access
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
     nginx.ingress.kubernetes.io/proxy-body-size: "8m"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
-    # Cert-manager for automatic TLS
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
   hosts:
     - store.amyxjack02.shop
-  tls:
-    - hosts:
-        - store.amyxjack02.shop
-      secretName: retail-store-tls
+  tls: []
+  # No TLS for testing — cert-manager can be skipped
 
-# ⚠️ IMPORTANT: For testing on single-node kubeadm/k3s/minikube/kind clusters,
-#    use the values-testing.yaml instead. It reduces resource requests so
-#    everything fits on one node.
-#    See "How much CPU/RAM do I need?" in README.md for details.
-
-# Cert Manager - enables automatic SSL/TLS certificates
+# Cert Manager — disabled for testing (no TLS needed)
 certManager:
-  createClusterIssuer: true
+  createClusterIssuer: false
   email: gaurav.cloud000@gmail.com
   clusterIssuerName: "letsencrypt-prod"
   server: "https://acme-v02.api.letsencrypt.org/directory"
   privateKeySecretName: "letsencrypt-prod-key"
 
 # ============================================
-# UI Service - Production config
+# UI Service — Testing config
 # ============================================
 ui:
-  replicaCount: 2
+  replicaCount: 1                # Single replica for testing
   image:
     repository: public.ecr.aws/aws-containers/retail-store-sample-ui
     pullPolicy: IfNotPresent
@@ -71,26 +66,18 @@ ui:
       cpu: 500m
       memory: 512Mi
     requests:
-      cpu: 256m
-      memory: 512Mi
+      cpu: 128m                  # Reduced from 256m
+      memory: 256Mi              # Reduced from 512Mi
   autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 60
-  metrics:
-    enabled: true
-  # Backend endpoints default to the in-cluster service DNS names
-  # (http://<release-fullname>-<service>:<port>) - no override needed.
+    enabled: false               # Disable HPA for testing
   podDisruptionBudget:
-    enabled: true
-    minAvailable: 1
+    enabled: false               # Disable PDB for testing
 
 # ============================================
-# Catalog Service - Production config
+# Catalog Service — Testing config
 # ============================================
 catalog:
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: public.ecr.aws/aws-containers/retail-store-sample-catalog
     pullPolicy: IfNotPresent
@@ -103,20 +90,17 @@ catalog:
       cpu: 500m
       memory: 256Mi
     requests:
-      cpu: 256m
-      memory: 256Mi
+      cpu: 128m                  # Reduced from 256m
+      memory: 128Mi              # Reduced from 256Mi
   autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 75
+    enabled: false
   app:
     persistence:
       provider: mysql
       database: "catalogdb"
       secret:
         username: catalog_user
-        password: ""    # Auto-generated if empty (stable across upgrades)
+        password: ""
   mysql:
     create: true
     image:
@@ -130,23 +114,22 @@ catalog:
         cpu: 500m
         memory: 512Mi
       requests:
-        cpu: 200m
+        cpu: 100m                 # Reduced from 200m
         memory: 256Mi
     persistence:
       enabled: true
       accessModes:
         - ReadWriteOnce
-      size: 10Gi
-      storageClass: gp2   # <-- ADJUST FOR YOUR CLUSTER (e.g., "standard" for minikube)
+      size: 5Gi                   # Reduced from 10Gi
+      storageClass: ""            # Use cluster default storage class
   podDisruptionBudget:
-    enabled: true
-    minAvailable: 1
+    enabled: false
 
 # ============================================
-# Cart Service - Production config
+# Cart Service — Testing config
 # ============================================
 cart:
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: public.ecr.aws/aws-containers/retail-store-sample-cart
     pullPolicy: IfNotPresent
@@ -159,13 +142,10 @@ cart:
       cpu: 500m
       memory: 512Mi
     requests:
-      cpu: 256m
-      memory: 512Mi
+      cpu: 128m                  # Reduced from 256m
+      memory: 256Mi              # Reduced from 512Mi
   autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 75
+    enabled: false
   app:
     persistence:
       provider: dynamodb
@@ -185,17 +165,16 @@ cart:
         cpu: 200m
         memory: 256Mi
       requests:
-        cpu: 100m
+        cpu: 50m                  # Reduced from 100m
         memory: 128Mi
   podDisruptionBudget:
-    enabled: true
-    minAvailable: 1
+    enabled: false
 
 # ============================================
-# Checkout Service - Production config
+# Checkout Service — Testing config
 # ============================================
 checkout:
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: public.ecr.aws/aws-containers/retail-store-sample-checkout
     pullPolicy: IfNotPresent
@@ -208,17 +187,13 @@ checkout:
       cpu: 500m
       memory: 256Mi
     requests:
-      cpu: 256m
-      memory: 256Mi
+      cpu: 128m                  # Reduced from 256m
+      memory: 128Mi              # Reduced from 256Mi
   autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 75
+    enabled: false
   app:
     persistence:
       provider: redis
-    # endpoints.orders defaults to the in-cluster orders service DNS name.
   redis:
     create: true
     image:
@@ -235,14 +210,13 @@ checkout:
         cpu: 50m
         memory: 64Mi
   podDisruptionBudget:
-    enabled: true
-    minAvailable: 1
+    enabled: false
 
 # ============================================
-# Orders Service - Production config
+# Orders Service — Testing config
 # ============================================
 orders:
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: public.ecr.aws/aws-containers/retail-store-sample-orders
     pullPolicy: IfNotPresent
@@ -255,26 +229,23 @@ orders:
       cpu: 500m
       memory: 512Mi
     requests:
-      cpu: 256m
-      memory: 512Mi
+      cpu: 128m                  # Reduced from 256m
+      memory: 256Mi              # Reduced from 512Mi
   autoscaling:
-    enabled: true
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 75
+    enabled: false
   app:
     persistence:
       provider: postgres
       database: "orders"
       secret:
         username: orders_user
-        password: ""    # Auto-generated if empty (stable across upgrades)
+        password: ""
     messaging:
       provider: rabbitmq
       rabbitmq:
         secret:
           username: rabbitmq
-          password: ""  # Auto-generated if empty (stable across upgrades)
+          password: ""
   postgresql:
     create: true
     image:
@@ -288,14 +259,14 @@ orders:
         cpu: 500m
         memory: 512Mi
       requests:
-        cpu: 200m
+        cpu: 100m                 # Reduced from 200m
         memory: 256Mi
     persistence:
       enabled: true
       accessModes:
         - ReadWriteOnce
-      size: 10Gi
-      storageClass: gp2   # <-- ADJUST FOR YOUR CLUSTER (e.g., "standard" for minikube)
+      size: 5Gi                   # Reduced from 10Gi
+      storageClass: ""
   rabbitmq:
     create: true
     image:
@@ -312,14 +283,14 @@ orders:
         cpu: 250m
         memory: 256Mi
       requests:
-        cpu: 100m
+        cpu: 50m                  # Reduced from 100m
         memory: 128Mi
     persistence:
       enabled: true
       accessModes:
         - ReadWriteOnce
-      size: 10Gi
-      storageClass: gp2   # <-- ADJUST FOR YOUR CLUSTER (e.g., "standard" for minikube)
+      size: 5Gi                   # Reduced from 10Gi
+      storageClass: ""
   podDisruptionBudget:
-    enabled: true
-    minAvailable: 1
+    enabled: false
+
