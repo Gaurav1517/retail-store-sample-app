@@ -82,7 +82,22 @@ echo ""
 # Install cert-manager if not installed
 echo -e "${YELLOW}[3/6] Checking cert-manager...${NC}"
 if kubectl get namespace cert-manager &> /dev/null 2>&1; then
-    echo -e "  ${GREEN}✓ cert-manager already installed${NC}"
+    echo -e "  ${YELLOW}cert-manager namespace exists. Checking if webhook is healthy...${NC}"
+    WEBHOOK_POD=$(kubectl get pods -n cert-manager -l app=webhook -o name 2>/dev/null | head -1)
+    if [ -z "$WEBHOOK_POD" ]; then
+        echo -e "  ${YELLOW}Webhook pod not found. Reapplying cert-manager...${NC}"
+        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
+    fi
+    echo -e "  ${YELLOW}Waiting for cert-manager pods to be ready...${NC}"
+    kubectl wait --namespace cert-manager \
+      --for=condition=ready pod \
+      --selector=app.kubernetes.io/component=controller \
+      --timeout=120s 2>/dev/null || true
+    kubectl wait --namespace cert-manager \
+      --for=condition=ready pod \
+      --selector=app.kubernetes.io/component=webhook \
+      --timeout=120s
+    echo -e "  ${GREEN}✓ cert-manager ready${NC}"
 else
     echo -e "  ${YELLOW}Installing cert-manager...${NC}"
     kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml
@@ -91,6 +106,10 @@ else
     kubectl wait --namespace cert-manager \
       --for=condition=ready pod \
       --selector=app.kubernetes.io/component=controller \
+      --timeout=120s
+    kubectl wait --namespace cert-manager \
+      --for=condition=ready pod \
+      --selector=app.kubernetes.io/component=webhook \
       --timeout=120s
 fi
 echo ""
